@@ -102,6 +102,14 @@ table 80101 "Cash Requisition Lines"
         {
             Caption = 'Remaining Amount';
         }
+        field(19; "Journal Template Name"; Code[20])
+        {
+            TableRelation="Gen. Journal Template";
+        }
+        field(20; "Journal Batch Name"; Code[20])
+        {
+            TableRelation="Gen. Journal Batch".Name where("Journal Template Name"=field("Journal Template Name"));
+        }
     }
     keys
     {

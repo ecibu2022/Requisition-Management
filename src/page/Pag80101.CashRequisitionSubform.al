@@ -44,6 +44,11 @@ page 80101 "Cash Requisition Subform"
                 field(Quantity; Rec.Quantity)
                 {
                     ToolTip = 'Specifies the value of the Quantity field.', Comment = '%';
+                    trigger OnValidate()
+                    begin
+                        CalculateTotalAmount();
+                        CurrPage.Update();
+                    end;
                 }
                 field("Unit of Measure"; Rec."Unit of Measure")
                 {
@@ -52,6 +57,11 @@ page 80101 "Cash Requisition Subform"
                 field("Unit Cost"; Rec."Unit Cost")
                 {
                     ToolTip = 'Specifies the value of the Unit Cost field.', Comment = '%';
+                    trigger OnValidate()
+                    begin
+                        CalculateTotalAmount();
+                        CurrPage.Update();
+                    end;
                 }
                 field(Amount; Rec.Amount)
                 {
@@ -72,6 +82,14 @@ page 80101 "Cash Requisition Subform"
                 field("Vehicle No."; Rec."Vehicle No.")
                 {
                     ToolTip = 'Specifies the value of the Vehicle No. field.', Comment = '%';
+                }
+                field("Journal Template Name";Rec."Journal Template Name")
+                {
+
+                }
+                field("Journal Batch Name";Rec."Journal Batch Name")
+                {
+
                 }
                 field(Transferred; Rec.Transferred)
                 {
@@ -99,6 +117,53 @@ page 80101 "Cash Requisition Subform"
         }
     }
 
+    actions
+    {
+        area(Processing)
+        {
+            action("Transfer to Journals")
+            {
+                Image=TransferToGeneralJournal;
+                Caption = 'Transfer to Journals';
+                ApplicationArea = All;
+                trigger OnAction()
+                var
+                    GenJournalLine: Record "Gen. Journal Line";
+                    JournalTemplateName: Code[20];
+                    JournalBatchName: Code[20];
+                    LineNo: Integer;
+                    PaymentJournals: Page "Payment Journal";
+                begin
+                    Rec.TestField("No.");
+                    Rec.TestField(Name);
+                    Rec.TestField(Amount);
+                    Rec.TestField(Transferred, false);
+                    Rec.TestField("Transfer Status", Rec."Transfer Status"::Partial);
+                    GenJournalLine.Init();
+                    if GenJournalLine.FindSet() then begin
+                        GenJournalLine.DeleteAll();
+                        LineNo += 10000;
+                        repeat begin
+                            GenJournalLine.Validate("Journal Template Name", Rec."Journal Template Name");
+                            GenJournalLine.Validate("Journal Batch Name", Rec."Journal Batch Name");
+                            GenJournalLine.Validate("Line No.", LineNo);
+                            GenJournalLine.Validate("Posting Date", WorkDate());
+                            GenJournalLine.Validate("Document Date", WorkDate());
+                            GenJournalLine.Validate("Document Type", GenJournalLine."Document Type"::Payment);
+                            GenJournalLine.Validate("Document No.", Rec."Requisition No.");
+                            GenJournalLine.Validate("Account Type", GenJournalLine."Account Type"::"G/L Account");
+                            GenJournalLine.Validate("Account No.", Rec."No.");
+                            GenJournalLine.Validate(Description, Rec.Name);
+                            GenJournalLine.Validate(Amount, Rec.Amount);
+                            GenJournalLine.Insert(true);
+                        end until GenJournalLine.Next()=0;
+                    end;
+                    PaymentJournals.Run();
+                end;
+            }
+        }
+    }
+
     trigger OnAfterGetCurrRecord()
     begin
         CalculateTotalAmount();
@@ -114,10 +179,10 @@ page 80101 "Cash Requisition Subform"
             if CashRequisitionLines.FindSet() then begin
                 repeat begin
                     // Method 1
-                    // Totals += CashRequisitionLines.Amount;
+                    Totals += CashRequisitionLines.Amount;
                     // Method 2
-                    CashRequisitionLines.CalcSums(Amount);
-                    Totals:=CashRequisitionLines.Amount;
+                    // CashRequisitionLines.CalcSums(Amount);
+                    // Totals:=CashRequisitionLines.Amount;
                 end until CashRequisitionLines.Next() = 0;
             end;
     end;
